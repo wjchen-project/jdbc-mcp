@@ -11,8 +11,7 @@ import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 
@@ -20,9 +19,9 @@ import java.io.File;
  * JDBC-MCP Server 入口类。
  * 通过 stdio 实现 MCP 协议，向 Agent 提供数据库探查和操作能力。
  */
+@Slf4j
 public class JdbcMcpServer {
 
-    private static final Logger log     = LoggerFactory.getLogger(JdbcMcpServer.class);
     private static final String VERSION = "1.0.0";
 
     public static void main(String[] args) {

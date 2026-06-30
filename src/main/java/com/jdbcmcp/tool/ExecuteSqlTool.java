@@ -5,8 +5,7 @@ import com.jdbcmcp.connection.DriverManager;
 import com.jdbcmcp.interceptor.SqlInterceptor;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -17,9 +16,8 @@ import java.util.Map;
 /**
  * execute_sql 工具：执行 Agent 传入的 SQL 语句，返回 HTML Table 格式结果。
  */
+@Slf4j
 public class ExecuteSqlTool {
-
-    private static final Logger log = LoggerFactory.getLogger(ExecuteSqlTool.class);
 
     private static final String TOOL_NAME        = "execute_sql";
     private static final String TOOL_DESCRIPTION =

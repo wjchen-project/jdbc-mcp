@@ -1,6 +1,7 @@
 package com.jdbcmcp.interceptor;
 
-import java.util.Set;
+import lombok.Getter;
+
 import java.util.regex.Pattern;
 
 /**
@@ -8,12 +9,8 @@ import java.util.regex.Pattern;
  * 当数据源配置为只读模式时，对 SQL 语句进行前置语法检查和关键字过滤。
  * 拦截 DML (INSERT, UPDATE, DELETE) 和 DDL (DROP, ALTER, TRUNCATE, CREATE) 语句。
  */
+@Getter
 public class SqlInterceptor {
-
-    private static final Set<String> FORBIDDEN_KEYWORDS = Set.of(
-            "INSERT", "UPDATE", "DELETE",
-            "DROP", "ALTER", "TRUNCATE", "CREATE"
-    );
 
     /**
      * 匹配 SQL 语句开头的修改性关键字。
@@ -33,7 +30,6 @@ public class SqlInterceptor {
     /**
      * 检查 SQL 是否允许执行。
      * 只读模式下，拒绝 DML 和 DDL 语句。
-     *
      * @param sql 待执行的 SQL 语句
      * @return null 表示允许执行；非 null 为拒绝原因
      */
@@ -53,9 +49,5 @@ public class SqlInterceptor {
         }
 
         return null;
-    }
-
-    public boolean isReadOnly() {
-        return readOnly;
     }
 }

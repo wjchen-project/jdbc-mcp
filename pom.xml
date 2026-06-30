@@ -22,6 +22,7 @@
         <mcp-sdk.version>0.17.2</mcp-sdk.version>
         <slf4j.version>2.0.16</slf4j.version>
         <logback.version>1.5.16</logback.version>
+        <lombok.version>1.18.38</lombok.version>
     </properties>
 
     <dependencyManagement>
@@ -37,6 +38,14 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- MCP SDK (includes core + Jackson + STDIO transport) -->
         <dependency>
             <groupId>io.modelcontextprotocol.sdk</groupId>
@@ -136,6 +145,13 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <encoding>UTF-8</encoding>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>

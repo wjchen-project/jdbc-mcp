@@ -1,8 +1,8 @@
 package com.jdbcmcp.connection;
 
 import com.jdbcmcp.config.DatasourceConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Connection;
 import java.sql.Driver;
@@ -14,9 +14,9 @@ import java.util.Properties;
  * 通过反射实例化 Driver，绕过 java.sql.DriverManager 机制直接建立 Connection。
  * 所有类（包括 JDBC 驱动）均由系统类加载器通过 MANIFEST.MF 的 Class-Path 加载。
  */
+@Slf4j
+@Getter
 public class DriverManager {
-
-    private static final Logger log = LoggerFactory.getLogger(DriverManager.class);
 
     private final DatasourceConfig config;
     private final Driver           driver;
@@ -29,13 +29,6 @@ public class DriverManager {
         this.driver = (Driver) driverClass.getDeclaredConstructor().newInstance();
 
         log.info("Driver loaded: {}", config.getDriverClass());
-    }
-
-    /**
-     * 获取数据源配置
-     */
-    public DatasourceConfig getConfig() {
-        return config;
     }
 
     /**
@@ -59,12 +52,5 @@ public class DriverManager {
         }
 
         return conn;
-    }
-
-    /**
-     * 获取驱动实例
-     */
-    public Driver getDriver() {
-        return driver;
     }
 }

@@ -1,7 +1,7 @@
 package com.jdbcmcp.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
@@ -18,16 +18,16 @@ import java.util.stream.Collectors;
 /**
  * 配置管理器：从 JAR 同级目录下的 config.yml 加载配置
  */
+@Slf4j
+@Getter
 public class ConfigManager {
-
-    private static final Logger log = LoggerFactory.getLogger(ConfigManager.class);
 
     private static final String CONFIG_FILE      = "config.yml";
     private static final int    DEFAULT_MAX_ROWS = 100;
 
     private final List<DatasourceConfig> datasources;
 
-    private ConfigManager(List<DatasourceConfig> datasources) {
+    public ConfigManager(List<DatasourceConfig> datasources) {
         this.datasources = datasources;
     }
 
@@ -108,9 +108,5 @@ public class ConfigManager {
         return datasources.stream()
                 .map(DatasourceConfig::getName)
                 .collect(Collectors.joining(", "));
-    }
-
-    public List<DatasourceConfig> getDatasources() {
-        return datasources;
     }
 }

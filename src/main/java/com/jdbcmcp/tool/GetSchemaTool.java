@@ -3,8 +3,7 @@ package com.jdbcmcp.tool;
 import com.jdbcmcp.connection.DriverManager;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -15,9 +14,8 @@ import java.util.Map;
 /**
  * get_schema 工具：获取当前数据源的所有表结构、字段、类型等元数据。
  */
+@Slf4j
 public class GetSchemaTool {
-
-    private static final Logger log = LoggerFactory.getLogger(GetSchemaTool.class);
 
     private static final String TOOL_NAME        = "get_schema";
     private static final String TOOL_DESCRIPTION =
