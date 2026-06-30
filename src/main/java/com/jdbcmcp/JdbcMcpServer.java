@@ -5,7 +5,10 @@ import com.jdbcmcp.config.DatasourceConfig;
 import com.jdbcmcp.connection.DriverManager;
 import com.jdbcmcp.interceptor.SqlInterceptor;
 import com.jdbcmcp.tool.ExecuteSqlTool;
-import com.jdbcmcp.tool.GetSchemaTool;
+import com.jdbcmcp.tool.GetTableSchemaTool;
+import com.jdbcmcp.tool.ListCatalogTool;
+import com.jdbcmcp.tool.ListSchemaTool;
+import com.jdbcmcp.tool.ListTableTool;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpSyncServer;
@@ -82,9 +85,21 @@ public class JdbcMcpServer {
                             .build())
                     .build();
 
-            // 注册 get_schema 工具
-            var getSchemaTool = GetSchemaTool.create(connectionManager);
-            server.addTool(getSchemaTool);
+            // 注册 list_catalogs 工具
+            var listCatalogTool = ListCatalogTool.create(connectionManager);
+            server.addTool(listCatalogTool);
+
+            // 注册 list_schemas 工具
+            var listSchemaTool = ListSchemaTool.create(connectionManager);
+            server.addTool(listSchemaTool);
+
+            // 注册 list_tables 工具
+            var listTableTool = ListTableTool.create(connectionManager);
+            server.addTool(listTableTool);
+
+            // 注册 get_table_schema 工具
+            var getTableSchemaTool = GetTableSchemaTool.create(connectionManager);
+            server.addTool(getTableSchemaTool);
 
             // 注册 execute_sql 工具
             var executeSqlTool = ExecuteSqlTool.create(connectionManager, interceptor, dsConfig);
