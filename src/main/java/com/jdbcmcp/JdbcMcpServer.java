@@ -4,7 +4,8 @@ import com.jdbcmcp.config.ConfigManager;
 import com.jdbcmcp.config.DatasourceConfig;
 import com.jdbcmcp.connection.DriverManager;
 import com.jdbcmcp.interceptor.SqlInterceptor;
-import com.jdbcmcp.tool.ExecuteSqlTool;
+import com.jdbcmcp.tool.ExecuteQueryTool;
+import com.jdbcmcp.tool.ExecuteUpdateTool;
 import com.jdbcmcp.tool.GetTableSchemaTool;
 import com.jdbcmcp.tool.ListCatalogTool;
 import com.jdbcmcp.tool.ListSchemaTool;
@@ -101,9 +102,13 @@ public class JdbcMcpServer {
             var getTableSchemaTool = GetTableSchemaTool.create(connectionManager);
             server.addTool(getTableSchemaTool);
 
-            // 注册 execute_sql 工具
-            var executeSqlTool = ExecuteSqlTool.create(connectionManager, interceptor, dsConfig);
-            server.addTool(executeSqlTool);
+            // 注册 execute_query 工具
+            var executeQueryTool = ExecuteQueryTool.create(connectionManager, dsConfig);
+            server.addTool(executeQueryTool);
+
+            // 注册 execute_update 工具
+            var executeUpdateTool = ExecuteUpdateTool.create(connectionManager, interceptor);
+            server.addTool(executeUpdateTool);
 
             log.info("JDBC-MCP Server started successfully. Waiting for MCP requests...");
 

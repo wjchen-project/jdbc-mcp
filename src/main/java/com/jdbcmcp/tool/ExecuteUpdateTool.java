@@ -1,6 +1,5 @@
 package com.jdbcmcp.tool;
 
-import com.jdbcmcp.config.DatasourceConfig;
 import com.jdbcmcp.connection.DriverManager;
 import com.jdbcmcp.formatter.ResultFormatter;
 import com.jdbcmcp.interceptor.SqlInterceptor;
@@ -11,40 +10,35 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 
 /**
- * execute_sql 工具：执行 Agent 传入的 SQL 语句，返回 HTML Table 格式结果。
+ * execute_update 工具：执行数据修改 SQL（INSERT/UPDATE/DELETE/DDL），
+ * 返回受影响行数。在 read_only 模式下会被拦截拒绝。
  */
 @Slf4j
-public class ExecuteSqlTool extends AbstractMetaTool {
+public class ExecuteUpdateTool extends AbstractMetaTool {
 
-    private static final String TOOL_NAME        = "execute_sql";
+    private static final String TOOL_NAME        = "execute_update";
     private static final String TOOL_DESCRIPTION =
-            "Execute a SQL statement on the configured datasource and return results as an HTML table. " +
-                    "For SELECT queries, the result includes column metadata (type and length) in the header. " +
-                    "In read-only mode, DML and DDL statements are rejected.";
+            "Execute a data modification SQL statement (INSERT, UPDATE, DELETE, DDL) on the configured datasource. " +
+                    "Returns the number of rows affected. In read-only mode, all modification statements are rejected.";
 
-    private final SqlInterceptor   interceptor;
-    private final DatasourceConfig config;
+    private final SqlInterceptor interceptor;
 
-    private ExecuteSqlTool(DriverManager connectionManager,
-                           SqlInterceptor interceptor,
-                           DatasourceConfig config) {
+    private ExecuteUpdateTool(DriverManager connectionManager,
+                              SqlInterceptor interceptor) {
         super(connectionManager);
         this.interceptor = interceptor;
-        this.config = config;
     }
 
     public static McpServerFeatures.SyncToolSpecification create(DriverManager connectionManager,
-                                                                 SqlInterceptor interceptor,
-                                                                 DatasourceConfig config) {
-        ExecuteSqlTool tool = new ExecuteSqlTool(connectionManager, interceptor, config);
+                                                                 SqlInterceptor interceptor) {
+        ExecuteUpdateTool tool = new ExecuteUpdateTool(connectionManager, interceptor);
         var schema = new McpSchema.JsonSchema("object",
-                Map.of("sql", Map.of("type", "string", "description", "The SQL statement to execute")),
+                Map.of("sql", Map.of("type", "string", "description", "The SQL statement to execute (INSERT, UPDATE, DELETE, DDL)")),
                 List.of("sql"), null, null, null);
         return buildSpecification(tool, TOOL_NAME, TOOL_DESCRIPTION, schema);
     }
@@ -58,24 +52,20 @@ public class ExecuteSqlTool extends AbstractMetaTool {
             return ResultFormatter.errorResult("Error: SQL statement is empty");
         }
 
-        // 安全拦截检查
+        // 安全拦截检查（read_only 模式下拒绝修改操作）
         String rejection = interceptor.check(sql);
         if (rejection != null) {
             return ResultFormatter.errorResult("Error: " + rejection);
         }
 
-        int maxRows = config.getMaxRows();
-
         try (Connection conn = getConnectionManager().getConnection()) {
             try (Statement stmt = conn.createStatement()) {
-                stmt.setMaxRows(maxRows);
-
                 boolean hasResultSet = stmt.execute(sql);
 
                 if (hasResultSet) {
-                    try (ResultSet rs = stmt.getResultSet()) {
-                        return ResultFormatter.successResult(ResultFormatter.format(rs, maxRows));
-                    }
+                    // execute_update 不支持 SELECT，但某些 DDL 可能返回结果集，做防御性关闭
+                    stmt.getResultSet().close();
+                    return ResultFormatter.successResult("Statement executed successfully.");
                 } else {
                     int updateCount = stmt.getUpdateCount();
                     return ResultFormatter.successResult(
@@ -87,6 +77,6 @@ public class ExecuteSqlTool extends AbstractMetaTool {
 
     @Override
     protected void onError(Exception e) {
-        log.error("SQL execution failed: {}", e.getMessage(), e);
+        log.error("Update execution failed: {}", e.getMessage(), e);
     }
 }

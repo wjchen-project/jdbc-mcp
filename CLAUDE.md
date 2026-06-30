@@ -13,7 +13,8 @@
 * **MCP 协议通信**：基于 `stdio`（标准输入/输出）实现 MCP 的 JSON-RPC 协议，向 Agent 提供数据库探查和操作能力。
 * **核心工具能力 (Tools)**：
 1. `get_schema`：获取当前数据源的所有表结构、字段、类型等元数据。
-2. `execute_sql`：执行 Agent 传入的 SQL 语句。
+2. `execute_query`：执行只读查询 SQL（SELECT），天然只读，返回 HTML Table 格式结果。
+3. `execute_update`：执行数据修改 SQL（INSERT/UPDATE/DELETE/DDL），返回受影响行数。在 read_only 模式下被拦截拒绝。
 
 
 
@@ -43,8 +44,8 @@
 1. **通信与路由模块 (Transport & Router)**：监听 `System.in`，解析符合 MCP 规范的 JSON-RPC 请求，并根据 `method` 路由至具体的 Tool 实现。
 2. **配置管理模块 (Config Manager)**：负责在启动时解析 JAR 同级目录下的 `config.yml`，若文件不存在或格式错误则优雅报错。
 3. **连接工厂模块 (Connection Factory)**：通过反射实例化 `java.sql.Driver`，绕过 `DriverManager` 机制直接建立 `Connection`。
-4. **安全拦截模块 (Interceptor)**：对执行的 SQL 进行前置语法检查和关键字过滤。
-5. **结果集格式化模块 (Result Formatter)**：将 `ResultSet` 转换为带有元数据属性的 HTML 字符串。
+4. **安全拦截模块 (Interceptor)**：对执行的 SQL 进行前置语法检查和关键字过滤。包含两种拦截器：`SqlInterceptor`（基于 read_only 配置拦截 DML/DDL，用于 execute_update）和 `QueryOnlyInterceptor`（无条件仅允许 SELECT，用于 execute_query）。
+5. **结果集格式化模块 (Result Formatter)**：将 `ResultSet` 转换为带有元数据属性的 HTML 字符串（用于 execute_query）；execute_update 仅返回受影响行数。
 
 ---
 
@@ -177,16 +178,18 @@ jdbc-mcp-tool/
 - 如果未传入参数，或者传入的名称在 config.yml 中不存在，程序必须向 System.err 输出错误原因，并调用 System.exit(1) 非零状态码退出。
 
 5. 安全防护拦截 (Read-Only)
-- 当对应的配置项 read_only: true 时，必须实施双重保护：
+- execute_query 工具天然只读，始终仅允许 SELECT 语句，无论数据源是否配置 read_only。非 SELECT 语句（INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE）一律拒绝。
+- execute_update 工具用于执行数据修改操作（INSERT, UPDATE, DELETE, DDL）。当对应的配置项 read_only: true 时，必须实施双重保护：
   a. 获取连接后，立即执行 connection.setReadOnly(true)。
     b. 在执行 SQL 前，在应用层对 SQL 字符串进行前置正则或词法分析。如果包含 INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE 等非查询关键字，必须直接拒绝执行，并将错误信息封装为 MCP Error 响应返回，严禁让进程崩溃退出。
 
 6. 数据量阈值截断 (Max Rows)
-- 每次执行查询时，必须显式调用 Statement.setMaxRows(limit)。limit 取自数据源配置，若未配置则默认为 100。
+- execute_query 每次执行查询时，必须显式调用 Statement.setMaxRows(limit)。limit 取自数据源配置，若未配置则默认为 100。
 - 遍历 ResultSet 时，应用层必须维护一个整型计数器。一旦达到 limit 阈值，必须立即 break 终止遍历，防止过量数据占用内存和模型上下文。
 
 7. 结果集 HTML 格式化
-- 查询返回的 Text 必须是一段符合标准的 <table> 结构。
+- execute_query 查询返回的 Text 必须是一段符合标准的 <table> 结构。
 - 通过 ResultSetMetaData 动态提取字段的本地类型名称 (getColumnTypeName) 和列显示大小 (getColumnDisplaySize)。
 - 表头必须输出为 <th data-type="类型" data-length="长度">列名</th> 格式。
 - 若数据库字段值为 null，HTML 中必须将其渲染为 <i>NULL</i>。
+- execute_update 不返回 HTML Table，仅返回受影响行数（如 "Rows affected: 3"）。
