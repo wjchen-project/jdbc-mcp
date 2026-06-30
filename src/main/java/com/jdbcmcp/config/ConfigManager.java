@@ -32,14 +32,19 @@ public class ConfigManager {
     }
 
     /**
-     * 从 JAR 同级目录下的 config.yml 加载配置
+     * 从应用根目录下的 config.yml 加载配置。
+     * 若 config.yml 不存在，提示用户从 config.example.yml 复制。
      */
     public static ConfigManager load() throws IOException {
         String baseDir = getJarDir();
         Path configPath = Paths.get(baseDir, CONFIG_FILE);
 
         if (!Files.exists(configPath)) {
-            throw new IOException("Config file not found: " + configPath);
+            Path examplePath = Paths.get(baseDir, "config.example.yml");
+            String hint = Files.exists(examplePath)
+                    ? "Copy config.example.yml to config.yml and edit it."
+                    : "Create config.yml with your datasource configuration.";
+            throw new IOException("Config file not found: " + configPath + "\n" + hint);
         }
 
         log.info("Loading config from: {}", configPath.toAbsolutePath());
@@ -67,9 +72,15 @@ public class ConfigManager {
     }
 
     /**
-     * 获取当前 JAR 包所在目录
+     * 获取应用根目录。
+     * 优先使用系统属性 app.home，未设置时回退到 JAR 包所在目录。
      */
     private static String getJarDir() {
+        String appHome = System.getProperty("app.home");
+        if (appHome != null && !appHome.isBlank()) {
+            return appHome;
+        }
+
         try {
             String path = ConfigManager.class
                     .getProtectionDomain()

@@ -123,9 +123,16 @@ public class JdbcMcpServer {
     }
 
     /**
-     * 获取当前 JAR 包所在目录
+     * 获取应用根目录。
+     * 优先使用系统属性 app.home（开发模式下由启动脚本注入），
+     * 未设置时回退到 JAR 包所在目录。
      */
     private static String getJarDir() {
+        String appHome = System.getProperty("app.home");
+        if (appHome != null && !appHome.isBlank()) {
+            return appHome;
+        }
+
         try {
             String path = JdbcMcpServer.class
                     .getProtectionDomain()

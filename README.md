@@ -22,7 +22,8 @@ unzip target/jdbc-mcp-tool.zip -d ~/
 ```
 jdbc-mcp-tool/
 ├── jdbc-mcp.jar        # 精简 JAR（仅含项目业务逻辑）
-├── config.yml          # 配置文件
+├── config.example.yml  # 配置模板
+├── config.yml          # 用户实际配置（不入版本控制）
 ├── driver/             # 用户放入的数据库驱动
 │   └── <用户自行放入的 JDBC 驱动>
 ├── lib/                # 运行时依赖（由 MANIFEST.MF 管理）
@@ -36,6 +37,12 @@ jdbc-mcp-tool/
 ```
 
 ### 3. 配置数据源
+
+从模板复制配置文件并编辑：
+
+```bash
+cp config.example.yml config.yml
+```
 
 编辑 `config.yml`：
 

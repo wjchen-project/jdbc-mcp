@@ -126,6 +126,8 @@ src/main/java/com/jdbcmcp/
 
 ### 5.1 config.yml 格式
 
+项目提供 `config.example.yml` 作为模板，用户需复制为 `config.yml` 并填入实际配置（`config.yml` 已被 `.gitignore` 忽略，避免敏感信息入库）。
+
 ```yaml
 datasources:
   - name: "prod_mysql"
@@ -148,7 +150,8 @@ java -jar jdbc-mcp.jar <datasource_name>
 ```
 jdbc-mcp-tool/
 ├── jdbc-mcp.jar        # 仅含项目业务逻辑的精简 JAR
-├── config.yml          # 配置文件
+├── config.example.yml  # 配置模板
+├── config.yml          # 用户实际配置（不入版本控制）
 ├── driver/             # 用户自行放入的 JDBC 驱动
 │   └── <用户自行放入的 JDBC 驱动>
 ├── lib/                # 运行时依赖（MANIFEST.MF Class-Path 管理）

@@ -31,5 +31,8 @@ Thumbs.db
 # 本地开发配置（不纳入版本控制）
 CLAUDE.local.md
 
+# 用户配置文件（包含密码等敏感信息，从 config.example.yml 复制后修改）
+config.yml
+
 # lib/ 目录下的 JAR 不纳入版本控制（依赖和驱动由构建或用户自行放入）
 lib/
