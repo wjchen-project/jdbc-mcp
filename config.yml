@@ -1,0 +1,16 @@
+datasources:
+  - name: "prod_mysql"
+    driver_class: "com.mysql.cj.jdbc.Driver"
+    url: "jdbc:mysql://127.0.0.1:3306/prod_db?useSSL=false"
+    username: "read_user"
+    password: "secure_password_123"
+    read_only: true
+    max_rows: 50
+
+  - name: "dev_postgres"
+    driver_class: "org.postgresql.Driver"
+    url: "jdbc:postgresql://localhost:5432/dev_db"
+    username: "postgres"
+    password: "dev_password"
+    read_only: false
+    # max_rows 未配置时，应用层默认限制为 100

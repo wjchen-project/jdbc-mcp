@@ -1,0 +1,122 @@
+package com.jdbcmcp;
+
+import com.jdbcmcp.config.ConfigManager;
+import com.jdbcmcp.config.DatasourceConfig;
+import com.jdbcmcp.connection.DriverManager;
+import com.jdbcmcp.interceptor.SqlInterceptor;
+import com.jdbcmcp.tool.ExecuteSqlTool;
+import com.jdbcmcp.tool.GetSchemaTool;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
+import io.modelcontextprotocol.spec.McpSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+
+/**
+ * JDBC-MCP Server 入口类。
+ * 通过 stdio 实现 MCP 协议，向 Agent 提供数据库探查和操作能力。
+ */
+public class JdbcMcpServer {
+
+    private static final Logger log     = LoggerFactory.getLogger(JdbcMcpServer.class);
+    private static final String VERSION = "1.0.0";
+
+    public static void main(String[] args) {
+        // 设置日志目录为 JAR 同级目录，供 logback.xml 中的 ${app.home} 使用
+        System.setProperty("app.home", getJarDir());
+
+        // 校验命令行参数：必须传入数据源名称
+        if (args == null || args.length == 0) {
+            log.error("Missing required argument: datasource name.");
+            log.error("Usage: java -jar jdbc-mcp.jar <datasource_name>");
+            System.exit(1);
+        }
+
+        String datasourceName = args[0];
+
+        // 加载配置
+        ConfigManager configManager;
+        try {
+            configManager = ConfigManager.load();
+        } catch (Exception e) {
+            log.error("Failed to load config: {}", e.getMessage(), e);
+            System.exit(1);
+            return;
+        }
+
+        // 匹配数据源
+        DatasourceConfig dsConfig = configManager.getDatasource(datasourceName);
+        if (dsConfig == null) {
+            log.error("Datasource '{}' not found in config.yml.", datasourceName);
+            log.error("Available datasources: {}", configManager.getDatasourceNames());
+            System.exit(1);
+        }
+
+        log.info("Using datasource: {}", datasourceName);
+
+        // 初始化连接工厂
+        DriverManager connectionManager;
+        try {
+            connectionManager = new DriverManager(dsConfig);
+        } catch (Exception e) {
+            log.error("Failed to initialize connection manager: {}", e.getMessage(), e);
+            System.exit(1);
+            return;
+        }
+
+        // 初始化 SQL 拦截器
+        SqlInterceptor interceptor = new SqlInterceptor(dsConfig.isReadOnly());
+
+        // 构建 MCP Server
+        try {
+            StdioServerTransportProvider transportProvider =
+                    new StdioServerTransportProvider(McpJsonMapper.getDefault());
+
+            McpSyncServer server = McpServer.sync(transportProvider)
+                    .serverInfo("jdbc-mcp", VERSION)
+                    .capabilities(McpSchema.ServerCapabilities.builder()
+                            .tools(true)
+                            .build())
+                    .build();
+
+            // 注册 get_schema 工具
+            var getSchemaTool = GetSchemaTool.create(connectionManager);
+            server.addTool(getSchemaTool);
+
+            // 注册 execute_sql 工具
+            var executeSqlTool = ExecuteSqlTool.create(connectionManager, interceptor, dsConfig);
+            server.addTool(executeSqlTool);
+
+            log.info("JDBC-MCP Server started successfully. Waiting for MCP requests...");
+
+        } catch (Exception e) {
+            log.error("Failed to start MCP server: {}", e.getMessage(), e);
+            System.exit(1);
+        }
+    }
+
+    /**
+     * 获取当前 JAR 包所在目录
+     */
+    private static String getJarDir() {
+        try {
+            String path = JdbcMcpServer.class
+                    .getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI()
+                    .getPath();
+            File file = new File(path);
+            if (file.isFile()) {
+                return file.getParent();
+            }
+            return file.getPath();
+        } catch (Exception e) {
+            return System.getProperty("user.dir");
+        }
+    }
+}

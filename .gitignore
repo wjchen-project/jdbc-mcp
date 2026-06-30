@@ -1,0 +1,35 @@
+# Compiled class files
+*.class
+
+# Log files
+*.log
+logs/
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# Maven
+target/
+dependency-reduced-pom.xml
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# 本地开发配置（不纳入版本控制）
+CLAUDE.local.md
+
+# lib/ 目录下的 JAR 不纳入版本控制（依赖和驱动由构建或用户自行放入）
+lib/
