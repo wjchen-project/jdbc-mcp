@@ -29,7 +29,6 @@ public class DatasourceConfig {
     /**
      * 从 YAML 解析的 Map 中构建配置
      */
-    @SuppressWarnings("unchecked")
     public static DatasourceConfig fromMap(Map<String, Object> map) {
         Object maxRowsObj = map.get("max_rows");
         int maxRows = (maxRowsObj instanceof Number)
