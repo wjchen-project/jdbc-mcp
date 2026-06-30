@@ -21,14 +21,22 @@ tar -xzf target/jdbc-mcp-tool.tar.gz -C ~/jdbc-mcp-tool
 解压后目录结构：
 ```
 jdbc-mcp-tool/
-├── jdbc-mcp.jar        # Fat-JAR（包含核心逻辑及基础依赖）
-├── config.yml          # 配置模板文件
-└── lib/                # 用户在此放入所需的数据库驱动 JAR
+├── jdbc-mcp.jar        # 精简 JAR（仅含项目业务逻辑）
+├── config.yml          # 配置文件
+├── lib/                # 运行时依赖 + 用户放入的数据库驱动
+│   ├── mcp-*.jar
+│   ├── snakeyaml-*.jar
+│   ├── slf4j-api-*.jar
+│   ├── logback-classic-*.jar
+│   ├── logback-core-*.jar
+│   ├── jackson-*.jar
+│   └── <用户自行放入的 JDBC 驱动>
+└── logs/               # 日志目录（运行时自动创建）
 ```
 
-### 3. 配置数据源c
+### 3. 配置数据源
 
-将 `config.yml` 复制到 `~/.config/jdbc-mcp/config.yml` 并编辑：
+编辑 `config.yml`：
 
 ```yaml
 datasources:
@@ -56,11 +64,46 @@ java -jar jdbc-mcp.jar my_db
 
 ## MCP 工具说明
 
-### `get_schema`
-获取当前数据源的所有表结构、字段、类型等元数据。
+本工具向 Agent 注册以下 6 个 MCP 工具：
 
-### `execute_sql`
-执行 Agent 传入的 SQL 语句。在只读模式下，DML 和 DDL 语句将被拒绝。
+### 元数据探查
+
+| 工具 | 说明 |
+|------|------|
+| `list_catalogs` | 列出所有 catalog |
+| `list_schemas` | 列出 schema，可按 catalog 过滤 |
+| `list_tables` | 列出表和视图，可按 catalog / schema / 表名过滤 |
+| `get_table_schema` | 获取指定表的列元数据（类型、长度等） |
+
+### 数据操作
+
+| 工具 | 说明 |
+|------|------|
+| `execute_query` | 执行只读查询 SQL（SELECT），天然只读，返回 HTML Table 格式结果，受 `max_rows` 限制 |
+| `execute_update` | 执行数据修改 SQL（INSERT/UPDATE/DELETE/DDL），返回受影响行数。`read_only` 模式下被拦截拒绝 |
+
+#### execute_query 输出示例
+
+```html
+<table border="1">
+  <thead>
+    <tr>
+      <th data-type="VARCHAR" data-length="64">user_id</th>
+      <th data-type="INT" data-length="11">age</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>USR_001</td>
+      <td>28</td>
+    </tr>
+    <tr>
+      <td>USR_002</td>
+      <td><i>NULL</i></td>
+    </tr>
+  </tbody>
+</table>
+```
 
 ## 配置规范
 
@@ -71,8 +114,8 @@ java -jar jdbc-mcp.jar my_db
 | `url` | JDBC 连接 URL | 是 | - |
 | `username` | 数据库用户名 | 是 | - |
 | `password` | 数据库密码 | 是 | - |
-| `read_only` | 是否只读模式 | 否 | `false` |
-| `max_rows` | 查询结果最大返回行数 | 否 | `100` |
+| `read_only` | 是否只读模式（影响 `execute_update`） | 否 | `false` |
+| `max_rows` | 查询结果最大返回行数（影响 `execute_query`） | 否 | `100` |
 
 ## 开发规范
 
