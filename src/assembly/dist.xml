@@ -3,7 +3,7 @@
           xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.2.0 http://maven.apache.org/xsd/assembly-2.2.0.xsd">
     <id>dist</id>
     <formats>
-        <format>tar.gz</format>
+        <format>zip</format>
     </formats>
     <includeBaseDirectory>true</includeBaseDirectory>
     <baseDirectory>jdbc-mcp-tool</baseDirectory>
@@ -14,17 +14,27 @@
             <directory>${project.build.directory}</directory>
             <outputDirectory>/</outputDirectory>
             <includes>
-                <include>jdbc-mcp-*.jar</include>
+                <include>${project.build.finalName}.jar</include>
             </includes>
         </fileSet>
 
-        <!-- 运行时依赖 JARs -->
+        <!-- 运行时依赖 JARs（lib/ 目录） -->
         <fileSet>
             <directory>${project.build.directory}/lib</directory>
             <outputDirectory>/lib</outputDirectory>
             <includes>
                 <include>*.jar</include>
             </includes>
+        </fileSet>
+
+        <!-- JDBC 驱动目录（用户自行放入驱动 JAR） -->
+        <fileSet>
+            <directory>${project.basedir}/driver</directory>
+            <outputDirectory>/driver</outputDirectory>
+            <includes>
+                <include>*.jar</include>
+            </includes>
+            <fileMode>0644</fileMode>
         </fileSet>
 
         <!-- 配置文件 -->

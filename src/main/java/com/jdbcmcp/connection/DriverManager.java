@@ -12,7 +12,7 @@ import java.util.Properties;
 /**
  * 数据库连接管理器。
  * 通过反射实例化 Driver，绕过 java.sql.DriverManager 机制直接建立 Connection。
- * 所有类（包括 JDBC 驱动）均由系统类加载器通过 MANIFEST.MF 的 Class-Path 加载。
+ * JDBC 驱动通过 DriverClassLoader 从 driver/ 目录加载。
  */
 @Slf4j
 @Getter
@@ -21,11 +21,11 @@ public class DriverManager {
     private final DatasourceConfig config;
     private final Driver           driver;
 
-    public DriverManager(DatasourceConfig config) throws Exception {
+    public DriverManager(DatasourceConfig config, DriverClassLoader driverClassLoader) throws Exception {
         this.config = config;
 
-        // 通过系统类加载器加载驱动类并实例化
-        Class<?> driverClass = Class.forName(config.getDriverClass());
+        // 通过 DriverClassLoader 加载驱动类并实例化
+        Class<?> driverClass = driverClassLoader.loadClass(config.getDriverClass());
         this.driver = (Driver) driverClass.getDeclaredConstructor().newInstance();
 
         log.info("Driver loaded: {}", config.getDriverClass());

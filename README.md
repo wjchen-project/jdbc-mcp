@@ -10,12 +10,12 @@
 mvn clean package
 ```
 
-构建完成后，分发包位于 `target/jdbc-mcp-tool.tar.gz`。
+构建完成后，分发包位于 `target/jdbc-mcp-tool.zip`。
 
 ### 2. 安装
 
 ```bash
-tar -xzf target/jdbc-mcp-tool.tar.gz -C ~/jdbc-mcp-tool
+unzip target/jdbc-mcp-tool.zip -d ~/
 ```
 
 解压后目录结构：
@@ -23,14 +23,15 @@ tar -xzf target/jdbc-mcp-tool.tar.gz -C ~/jdbc-mcp-tool
 jdbc-mcp-tool/
 ├── jdbc-mcp.jar        # 精简 JAR（仅含项目业务逻辑）
 ├── config.yml          # 配置文件
-├── lib/                # 运行时依赖 + 用户放入的数据库驱动
+├── driver/             # 用户放入的数据库驱动
+│   └── <用户自行放入的 JDBC 驱动>
+├── lib/                # 运行时依赖（由 MANIFEST.MF 管理）
 │   ├── mcp-*.jar
 │   ├── snakeyaml-*.jar
 │   ├── slf4j-api-*.jar
 │   ├── logback-classic-*.jar
 │   ├── logback-core-*.jar
-│   ├── jackson-*.jar
-│   └── <用户自行放入的 JDBC 驱动>
+│   └── jackson-*.jar
 └── logs/               # 日志目录（运行时自动创建）
 ```
 
@@ -51,9 +52,9 @@ datasources:
 
 ### 4. 放置 JDBC 驱动
 
-将数据库驱动 JAR 文件放入 `lib/` 目录，例如：
+将数据库驱动 JAR 文件放入 `driver/` 目录，例如：
 ```bash
-cp mysql-connector-j-8.x.jar ~/jdbc-mcp-tool/lib/
+cp mysql-connector-j-8.x.jar ~/jdbc-mcp-tool/driver/
 ```
 
 ### 5. 启动

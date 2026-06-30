@@ -75,6 +75,7 @@
     </dependencies>
 
     <build>
+        <finalName>${artifactId}</finalName>
         <plugins>
             <!-- maven-jar-plugin: 构建仅含项目自身 class 的精简 JAR -->
             <plugin>
@@ -107,8 +108,6 @@
                         <configuration>
                             <outputDirectory>${project.build.directory}/lib</outputDirectory>
                             <includeScope>runtime</includeScope>
-                            <!-- 排除 JDBC 驱动（用户自行放入 lib/） -->
-                            <excludeGroupIds>com.mysql,org.postgresql,com.oracle</excludeGroupIds>
                         </configuration>
                     </execution>
                 </executions>

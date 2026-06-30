@@ -2,6 +2,7 @@ package com.jdbcmcp;
 
 import com.jdbcmcp.config.ConfigManager;
 import com.jdbcmcp.config.DatasourceConfig;
+import com.jdbcmcp.connection.DriverClassLoader;
 import com.jdbcmcp.connection.DriverManager;
 import com.jdbcmcp.interceptor.SqlInterceptor;
 import com.jdbcmcp.tool.ExecuteQueryTool;
@@ -61,10 +62,13 @@ public class JdbcMcpServer {
 
         log.info("Using datasource: {}", datasourceName);
 
+        // 初始化驱动类加载器：扫描 driver/ 目录下的所有 JDBC 驱动 JAR
+        DriverClassLoader driverClassLoader = new DriverClassLoader(getJarDir());
+
         // 初始化连接工厂
         DriverManager connectionManager;
         try {
-            connectionManager = new DriverManager(dsConfig);
+            connectionManager = new DriverManager(dsConfig, driverClassLoader);
         } catch (Exception e) {
             log.error("Failed to initialize connection manager: {}", e.getMessage(), e);
             System.exit(1);
