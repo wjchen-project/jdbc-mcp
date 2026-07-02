@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * execute_query 工具：执行只读查询 SQL，返回 HTML Table 格式结果。
+ * execute_query 工具：执行只读查询 SQL，返回 Markdown 格式结果。
  * 该工具天然只读，即使数据源未配置 read_only，也仅允许 SELECT 查询。
  * 自动应用 maxRows 限制防止过量数据占用模型上下文。
  */
@@ -26,9 +26,9 @@ public class ExecuteQueryTool extends AbstractMetaTool {
 
     private static final String TOOL_NAME        = "execute_query";
     private static final String TOOL_DESCRIPTION =
-            "Execute a read-only SQL query (SELECT) on the configured datasource and return results as an HTML table. " +
-                    "Only SELECT statements are allowed. The result includes column metadata (type and length) in the header. " +
-                    "The number of returned rows is limited by the max_rows configuration (default 100).";
+            "Execute a read-only SQL query (SELECT) on the configured datasource and return results in Markdown format. " +
+                    "Only SELECT statements are allowed. The result is divided into # Schema (column name, type, length) " +
+                    "and # Data sections. The number of returned rows is limited by the max_rows configuration (default 100).";
 
     private final DatasourceConfig config;
 

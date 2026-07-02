@@ -9,33 +9,33 @@ import java.util.List;
 
 /**
  * 结果集格式化器。
- * 将 ResultSet 转换为带有元数据属性的 HTML Table 字符串。
- * 表头 <th> 附带 data-type 和 data-length 属性。
+ * 将 ResultSet 转换为 Markdown 格式字符串，包含 # Schema 和 # Data 两个部分。
+ * Schema 部分列出列名、类型、长度；Data 部分列出数据行。
  * NULL 值渲染为 <i>NULL</i>。
  */
 public class ResultFormatter {
 
     /**
-     * 将 ResultSet 格式化为 HTML Table（无行数限制）。
+     * 将 ResultSet 格式化为 Markdown（无行数限制）。
      * 适用于元数据查询等结果集较小的场景。
      * @param rs 查询结果集
-     * @return HTML table 字符串
+     * @return Markdown 字符串
      */
     public static String format(ResultSet rs) throws SQLException {
         return format(rs, Integer.MAX_VALUE);
     }
 
     /**
-     * 将 ResultSet 格式化为 HTML Table
+     * 将 ResultSet 格式化为 Markdown
      * @param rs      查询结果集
      * @param maxRows 最大返回行数
-     * @return HTML table 字符串
+     * @return Markdown 字符串
      */
     public static String format(ResultSet rs, int maxRows) throws SQLException {
         ResultSetMetaData meta = rs.getMetaData();
         int columnCount = meta.getColumnCount();
 
-        HtmlTableBuilder builder = new HtmlTableBuilder();
+        MarkdownTableBuilder builder = new MarkdownTableBuilder();
 
         // 表头：通过 ResultSetMetaData 动态获取列名、类型、长度
         for (int i = 1; i <= columnCount; i++) {
@@ -84,16 +84,15 @@ public class ResultFormatter {
     }
 
     /**
-     * HTML 转义，防止 XSS 和格式错乱
+     * Markdown 转义，防止格式错乱。
+     * 在 Markdown 表格中，管道符 | 会破坏表格结构，需转义。
      */
-    public static String escapeHtml(String text) {
+    public static String escapeMarkdown(String text) {
         if (text == null) {
             return "";
         }
-        return text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
+        return text.replace("|", "\\|")
+                .replace("\n", " ")
+                .replace("\r", " ");
     }
 }

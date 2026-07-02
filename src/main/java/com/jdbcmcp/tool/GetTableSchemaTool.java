@@ -26,7 +26,7 @@ public class GetTableSchemaTool extends AbstractMetaTool {
             "Get the column schema metadata for a specific table, including column name, data type, " +
                     "type name, column size, nullable, and remarks. " +
                     "Supports optional catalog and schema parameters to narrow down the target table. " +
-                    "Returns the result as an HTML table.";
+                    "Returns the result in Markdown format.";
 
     private GetTableSchemaTool(DriverManager connectionManager) {
         super(connectionManager);

@@ -22,7 +22,7 @@ public class ListTableTool extends AbstractMetaTool {
     private static final String TOOL_NAME        = "list_tables";
     private static final String TOOL_DESCRIPTION =
             "List all tables and views in the database, optionally filtered by catalog, schema, and table name pattern. " +
-                    "Returns the result as an HTML table with table type, schema, catalog, and remarks.";
+                    "Returns the result in Markdown format with table type, schema, catalog, and remarks.";
 
     private ListTableTool(DriverManager connectionManager) {
         super(connectionManager);

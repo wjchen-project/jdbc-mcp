@@ -24,8 +24,8 @@ src/main/java/com/jdbcmcp/
 │   ├── DriverClassLoader.java          # 驱动类加载器（扫描 driver/ 下所有 JAR）
 │   └── DriverManager.java              # JDBC 连接管理器（反射加载 Driver）
 ├── formatter/
-│   ├── HtmlTableBuilder.java           # HTML <table> 流式构建器
-│   └── ResultFormatter.java            # ResultSet → HTML Table 格式化 & MCP 响应构建
+│   ├── MarkdownTableBuilder.java       # Markdown 表格流式构建器（# Schema + # Data）
+│   └── ResultFormatter.java            # ResultSet → Markdown 格式化 & MCP 响应构建
 ├── interceptor/
 │   ├── QueryOnlyInterceptor.java       # 无条件只读拦截器（execute_query 使用）
 │   └── SqlInterceptor.java             # 条件性只读拦截器（execute_update 使用）
@@ -49,7 +49,7 @@ src/main/java/com/jdbcmcp/
 | `list_schemas` | ListSchemaTool | `catalog?` (optional) | 列出 schema，可按 catalog 过滤 |
 | `list_tables` | ListTableTool | `catalog?`, `schema?`, `table_pattern?` (默认 `%`) | 列出表和视图 |
 | `get_table_schema` | GetTableSchemaTool | `catalog?`, `schema?`, `table?` (默认 `%`) | 获取指定表的列元数据 |
-| `execute_query` | ExecuteQueryTool | `sql` (required) | 执行 SELECT 查询，返回 HTML Table |
+| `execute_query` | ExecuteQueryTool | `sql` (required) | 执行 SELECT 查询，返回 Markdown 格式 |
 | `execute_update` | ExecuteUpdateTool | `sql` (required) | 执行修改 SQL，返回受影响行数 |
 
 ---
@@ -104,15 +104,17 @@ src/main/java/com/jdbcmcp/
 
 ### 4.5 结果格式化 (`ResultFormatter` + `HtmlTableBuilder`)
 
-**execute_query** 输出 HTML Table：
-- 表头 `<th data-type="类型" data-length="长度">列名</th>` — 通过 `ResultSetMetaData.getColumnTypeName()` 和 `getColumnDisplaySize()` 获取
+**execute_query** 输出 Markdown 格式：
+- 输出分为 `# Schema` 和 `# Data` 两个部分
+- Schema 部分列出列名、类型（`ResultSetMetaData.getColumnTypeName()`）、长度（`getColumnDisplaySize()`）
+- Data 部分列出数据行
 - NULL 值渲染为 `<i>NULL</i>`
-- 非 NULL 值经 `escapeHtml()` 转义（`& < > " '`）
+- 非 NULL 值经 `escapeMarkdown()` 转义（`|` → `\|`，换行 → 空格）
 - 双重行数限制：`Statement.setMaxRows()` + `ResultFormatter.format(rs, maxRows)` 遍历计数器
 
 **execute_update** 输出纯文本：`"Statement executed successfully. Rows affected: N"`
 
-**元数据查询工具**（list_catalogs 等）使用无行数限制的 `ResultFormatter.format(rs)` 重载。
+**元数据查询工具**（list_catalogs 等）使用无行数限制的 `ResultFormatter.format(rs)` 重载，同样输出 Markdown 格式。
 
 ### 4.6 工具基类 (`AbstractMetaTool`)
 
@@ -192,4 +194,4 @@ jdbc-mcp-tool/
 4. **命令行参数** — `main()` 必须校验 `args[0]`，缺失或不匹配时 `System.exit(1)`
 5. **安全拦截** — `execute_query` 天然只读（`QueryOnlyInterceptor` 无条件拦截）；`execute_update` 受 `read_only` 配置控制（`SqlInterceptor` 条件拦截 + `conn.setReadOnly()` 双重保护）
 6. **行数截断** — `execute_query` 双重限制：`Statement.setMaxRows()` + 遍历计数器，默认 100 行
-7. **HTML 格式化** — `execute_query` 表头带 `data-type`/`data-length`，NULL 渲染为 `<i>NULL</i>`；`execute_update` 仅返回受影响行数
+7. **Markdown 格式化** — `execute_query` 输出分为 `# Schema`（列名、类型、长度）和 `# Data`（数据行）两个部分，NULL 渲染为 `<i>NULL</i>`；`execute_update` 仅返回受影响行数

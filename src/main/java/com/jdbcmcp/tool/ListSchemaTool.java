@@ -23,7 +23,7 @@ public class ListSchemaTool extends AbstractMetaTool {
     private static final String TOOL_DESCRIPTION =
             "List all schemas in the database, optionally filtered by catalog. " +
                     "A schema is a namespace within a catalog that contains tables and other objects. " +
-                    "Returns the result as an HTML table.";
+                    "Returns the result in Markdown format.";
 
     private ListSchemaTool(DriverManager connectionManager) {
         super(connectionManager);

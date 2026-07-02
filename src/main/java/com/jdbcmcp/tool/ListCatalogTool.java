@@ -23,7 +23,7 @@ public class ListCatalogTool extends AbstractMetaTool {
     private static final String TOOL_DESCRIPTION =
             "List all available catalogs in the database. " +
                     "A catalog is a logical namespace at the top level of the database hierarchy. " +
-                    "Returns the result as an HTML table.";
+                    "Returns the result in Markdown format.";
 
     private ListCatalogTool(DriverManager connectionManager) {
         super(connectionManager);
