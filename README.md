@@ -64,10 +64,44 @@ datasources:
 cp mysql-connector-j-8.x.jar ~/jdbc-mcp-tool/driver/
 ```
 
-### 5. 启动
+### 5. 配置 MCP 客户端
 
-```bash
-java -jar jdbc-mcp.jar my_db
+本工具通过 `stdio` 方式与 MCP 客户端通信，以下以 **Claude Code** 为例说明配置方法。
+
+#### Claude Code
+
+在项目根目录创建 `.mcp.json` 文件：
+
+```json
+{
+  "mcpServers": {
+    "jdbc-mcp": {
+      "type": "stdio",
+      "command": "java",
+      "args": ["-jar", "/path/to/jdbc-mcp-tool/jdbc-mcp.jar", "my_db"]
+    }
+  }
+}
+```
+
+> **提示**：将 `/path/to/jdbc-mcp-tool/` 替换为实际安装路径，`my_db` 替换为 `config.yml` 中配置的数据源名称。
+
+配置完成后，Claude Code 会自动加载 MCP 服务器，即可在对话中使用数据库工具。
+
+#### 开发模式
+
+开发阶段可使用项目自带的 `run.sh` 脚本（自动编译、拼接 classpath）：
+
+```json
+{
+  "mcpServers": {
+    "jdbc-mcp": {
+      "type": "stdio",
+      "command": "./run.sh",
+      "args": ["my_db"]
+    }
+  }
+}
 ```
 
 ## MCP 工具说明
@@ -87,30 +121,25 @@ java -jar jdbc-mcp.jar my_db
 
 | 工具 | 说明 |
 |------|------|
-| `execute_query` | 执行只读查询 SQL（SELECT），天然只读，返回 HTML Table 格式结果，受 `max_rows` 限制 |
+| `execute_query` | 执行只读查询 SQL（SELECT），天然只读，返回 Markdown 格式结果，受 `max_rows` 限制 |
 | `execute_update` | 执行数据修改 SQL（INSERT/UPDATE/DELETE/DDL），返回受影响行数。`read_only` 模式下被拦截拒绝 |
 
 #### execute_query 输出示例
 
-```html
-<table border="1">
-  <thead>
-    <tr>
-      <th data-type="VARCHAR" data-length="64">user_id</th>
-      <th data-type="INT" data-length="11">age</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>USR_001</td>
-      <td>28</td>
-    </tr>
-    <tr>
-      <td>USR_002</td>
-      <td><i>NULL</i></td>
-    </tr>
-  </tbody>
-</table>
+输出分为 `# Schema`（列名、类型、长度）和 `# Data`（数据行）两个部分，NULL 值渲染为 `<i>NULL</i>`。
+
+```markdown
+# Schema
+| Name | Type | Length |
+| --- | --- | --- |
+| user_id | VARCHAR | 64 |
+| age | INT | 11 |
+
+# Data
+| user_id | age |
+| --- | --- |
+| USR_001 | 28 |
+| USR_002 | <i>NULL</i> |
 ```
 
 ## 配置规范
@@ -125,6 +154,4 @@ java -jar jdbc-mcp.jar my_db
 | `read_only` | 是否只读模式（影响 `execute_update`） | 否 | `false` |
 | `max_rows` | 查询结果最大返回行数（影响 `execute_query`） | 否 | `100` |
 
-## 开发规范
 
-详见 [CLAUDE.md](CLAUDE.md)。
