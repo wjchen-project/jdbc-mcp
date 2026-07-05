@@ -32,18 +32,10 @@
             <directory>${project.basedir}/driver</directory>
             <outputDirectory>/driver</outputDirectory>
             <includes>
-                <include>*.jar</include>
+                <include>**/*</include>
             </includes>
             <fileMode>0644</fileMode>
-        </fileSet>
-
-        <!-- 配置文件 -->
-        <fileSet>
-            <directory>${project.basedir}</directory>
-            <outputDirectory>/</outputDirectory>
-            <includes>
-                <include>config.yml</include>
-            </includes>
+            <directoryMode>0755</directoryMode>
         </fileSet>
     </fileSets>
 </assembly>

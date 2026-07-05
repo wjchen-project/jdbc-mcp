@@ -16,7 +16,7 @@ import java.util.Map;
 
 /**
  * execute_update 工具：执行数据修改 SQL（INSERT/UPDATE/DELETE/DDL），
- * 返回受影响行数。在 read_only 模式下会被拦截拒绝。
+ * 返回受影响行数。默认只读拦截，只有显式传入 --danger-allow-write 后才允许写操作。
  */
 @Slf4j
 public class ExecuteUpdateTool extends AbstractMetaTool {
@@ -24,7 +24,8 @@ public class ExecuteUpdateTool extends AbstractMetaTool {
     private static final String TOOL_NAME        = "execute_update";
     private static final String TOOL_DESCRIPTION =
             "Execute a data modification SQL statement (INSERT, UPDATE, DELETE, DDL) on the configured datasource. " +
-                    "Returns the number of rows affected. In read-only mode, all modification statements are rejected.";
+                    "Returns the number of rows affected. Modification statements are rejected unless " +
+                    "--danger-allow-write is explicitly enabled at startup.";
 
     private final SqlInterceptor interceptor;
 
@@ -52,7 +53,7 @@ public class ExecuteUpdateTool extends AbstractMetaTool {
             return ResultFormatter.errorResult("Error: SQL statement is empty");
         }
 
-        // 安全拦截检查（read_only 模式下拒绝修改操作）
+        // 安全拦截检查（未传入 --danger-allow-write 时拒绝修改操作）
         String rejection = interceptor.check(sql);
         if (rejection != null) {
             return ResultFormatter.errorResult("Error: " + rejection);

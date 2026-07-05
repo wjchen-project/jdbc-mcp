@@ -8,7 +8,7 @@
 
 JDBC-MCP 是一个基于 Model Context Protocol (MCP) 的通用 JDBC 数据库工具，通过 `stdio` 与大模型（Agent）通信，提供数据库探查与操作能力。
 
-**技术栈**: Java 17 / Maven / MCP SDK 0.17.2 / SnakeYAML 2.2 / SLF4J 2.0.16 + Logback 1.5.16 / Lombok 1.18.38
+**技术栈**: Java 17 / Maven / MCP SDK 0.17.2 / SLF4J 2.0.16 + Logback 1.5.16 / Lombok 1.18.38
 
 ---
 
@@ -18,7 +18,10 @@ JDBC-MCP 是一个基于 Model Context Protocol (MCP) 的通用 JDBC 数据库�
 src/main/java/com/jdbcmcp/
 ├── JdbcMcpServer.java                  # 入口类，MCP Server 构建 & 工具注册
 ├── config/
-│   ├── ConfigManager.java              # config.yml 加载与数据源匹配
+│   ├── AbstractArgOption.java          # 参数选项抽象基类
+│   ├── ArgOption.java                  # 参数选项定义（长/短指令、描述、消费参数数）
+│   ├── ArgParser.java                  # 参数解析器与注册 Builder
+│   ├── ArgParseResult.java             # 参数解析结果
 │   └── DatasourceConfig.java           # 单数据源配置 POJO
 ├── connection/
 │   ├── DriverClassLoader.java          # 驱动类加载器（扫描 driver/ 下所有 JAR）
@@ -60,27 +63,28 @@ src/main/java/com/jdbcmcp/
 
 启动流程：
 1. 设置 `app.home` 系统属性（JAR 所在目录）→ 供 logback 使用
-2. 校验 `args[0]` 为数据源名称 → 缺失或不匹配则 `System.exit(1)`
-3. `ConfigManager.load()` 加载配置
+2. 校验并解析命令行 JDBC 连接参数 → 缺失或非法则 `System.exit(1)`
+3. `ArgParser.builder().register(...)` 注册参数选项，解析后构建 `DatasourceConfig`
 4. `new DriverClassLoader(appHome)` 初始化驱动类加载器（扫描 `driver/` 下所有 JAR）
 5. `new DriverManager(dsConfig, driverClassLoader)` 初始化连接管理器
 6. `new SqlInterceptor(dsConfig.isReadOnly())` 初始化拦截器
 7. 构建 MCP Sync Server（Stdio 传输）→ 依次注册 6 个工具
 
-### 4.2 配置管理 (`ConfigManager` + `DatasourceConfig`)
+### 4.2 参数管理 (`ArgParser` + `DatasourceConfig`)
 
-- **ConfigManager**: 从 JAR 同级目录的 `config.yml` 加载，SnakeYAML 解析，通过 `DatasourceConfig.fromMap()` 构建配置对象
+- **ArgOption**: 定义长指令、短指令、描述、是否必填、需要消费的参数数量（skipParameterCount）以及参数校验器
+- **ArgParser**: 通过 Builder 注册 `ArgOption`，支持长指令、短指令、`--key=value` 形式，并统一处理未知/重复/缺失参数和选项校验器
+- **DatasourceConfig**: 保存解析后的 JDBC 连接信息，不再读取 `config.yml`
 - **DatasourceConfig** 字段:
 
-| 字段 | 类型 | 默认值 | YAML 键 |
-|------|------|--------|---------|
-| name | String | — | `name` |
-| driverClass | String | — | `driver_class` |
-| url | String | — | `url` |
-| username | String | — | `username` |
-| password | String | — | `password` |
-| readOnly | boolean | `false` | `read_only` |
-| maxRows | int | `100` | `max_rows` |
+| 字段 | 类型 | 默认值 | 长指令 | 短指令 |
+|------|------|--------|--------|--------|
+| driverClass | String | — | `--driver-class` | `-d` |
+| url | String | — | `--url` | — |
+| username | String | — | `--username` | `-u` |
+| password | String | — | `--password` | `-p` |
+| readOnly | boolean | `true` | 由 `--danger-allow-write` 反向控制 | — |
+| maxRows | int | `100` | `--max-rows` | `-m` |
 
 ### 4.3 类加载与连接管理 (`DriverClassLoader` + `DriverManager`)
 
@@ -124,27 +128,25 @@ src/main/java/com/jdbcmcp/
 
 ---
 
-## 5. 配置与构建
+## 5. 参数与构建
 
-### 5.1 config.yml 格式
+### 5.1 命令行参数
 
-项目提供 `config.example.yml` 作为模板，用户需复制为 `config.yml` 并填入实际配置（`config.yml` 已被 `.gitignore` 忽略，避免敏感信息入库）。
+项目不再读取 `config.yml`，所有连接参数通过命令行传入。
 
-```yaml
-datasources:
-  - name: "prod_mysql"
-    driver_class: "com.mysql.cj.jdbc.Driver"
-    url: "jdbc:mysql://127.0.0.1:3306/prod_db?useSSL=false"
-    username: "read_user"
-    password: "secure_password_123"
-    read_only: true
-    max_rows: 50
+```bash
+java -jar jdbc-mcp.jar \
+  --driver-class com.mysql.cj.jdbc.Driver \
+  --url "jdbc:mysql://127.0.0.1:3306/prod_db?useSSL=false" \
+  --username read_user \
+  --password secure_password_123 \
+  --max-rows 50
 ```
 
 ### 5.2 启动命令
 
 ```bash
-java -jar jdbc-mcp.jar <datasource_name>
+java -jar jdbc-mcp.jar --driver-class <jdbc_driver_class> --url <jdbc_url> --username <username> --password <password>
 ```
 
 ### 5.3 分发包目录结构
@@ -152,13 +154,10 @@ java -jar jdbc-mcp.jar <datasource_name>
 ```
 jdbc-mcp-tool/
 ├── jdbc-mcp.jar        # 仅含项目业务逻辑的精简 JAR
-├── config.example.yml  # 配置模板
-├── config.yml          # 用户实际配置（不入版本控制）
 ├── driver/             # 用户自行放入的 JDBC 驱动
 │   └── <用户自行放入的 JDBC 驱动>
 ├── lib/                # 运行时依赖（MANIFEST.MF Class-Path 管理）
 │   ├── mcp-*.jar
-│   ├── snakeyaml-*.jar
 │   ├── slf4j-api-*.jar
 │   ├── logback-classic-*.jar
 │   ├── logback-core-*.jar
@@ -191,7 +190,7 @@ jdbc-mcp-tool/
 1. **依赖隔离** — pom.xml 严禁引入数据库驱动依赖，驱动由用户自行放入 `driver/` 目录
 2. **stdout 隔离 (CRITICAL)** — `System.out` 仅用于 MCP JSON-RPC 通信，严禁输出任何调试/日志/异常信息，全部走 `System.err` 或日志文件
 3. **驱动加载** — 严禁使用 `java.sql.DriverManager.getConnection()`，必须通过 `DriverClassLoader.loadClass()` 加载驱动类 → 反射实例化 → `driver.connect()` 获取连接
-4. **命令行参数** — `main()` 必须校验 `args[0]`，缺失或不匹配时 `System.exit(1)`
-5. **安全拦截** — `execute_query` 天然只读（`QueryOnlyInterceptor` 无条件拦截）；`execute_update` 受 `read_only` 配置控制（`SqlInterceptor` 条件拦截 + `conn.setReadOnly()` 双重保护）
+4. **命令行参数** — `main()` 必须校验并解析 JDBC 参数，缺失或不匹配时 `System.exit(1)`
+5. **安全拦截** — `execute_query` 天然只读（`QueryOnlyInterceptor` 无条件拦截）；`execute_update` 默认只读拦截，仅在显式传入 `--danger-allow-write` 时允许写操作（`SqlInterceptor` 条件拦截 + `conn.setReadOnly()` 双重保护）
 6. **行数截断** — `execute_query` 双重限制：`Statement.setMaxRows()` + 遍历计数器，默认 100 行
 7. **Markdown 格式化** — `execute_query` 输出分为 `# Schema`（列名、类型、长度）和 `# Data`（数据行）两个部分，NULL 渲染为 `<i>NULL</i>`；`execute_update` 仅返回受影响行数

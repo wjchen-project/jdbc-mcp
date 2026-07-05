@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 /**
  * 只读查询拦截器。
  * 始终拒绝非 SELECT 语句（DML/DDL），用于 execute_query 工具。
- * 与 {@link SqlInterceptor} 不同，该拦截器无条件生效，不依赖数据源的 read_only 配置。
+ * 与 {@link SqlInterceptor} 不同，该拦截器无条件生效，不依赖 --danger-allow-write 参数。
  */
 public class QueryOnlyInterceptor {
 

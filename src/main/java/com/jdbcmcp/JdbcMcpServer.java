@@ -1,6 +1,8 @@
 package com.jdbcmcp;
 
-import com.jdbcmcp.config.ConfigManager;
+import com.jdbcmcp.config.ArgOption;
+import com.jdbcmcp.config.ArgParseResult;
+import com.jdbcmcp.config.ArgParser;
 import com.jdbcmcp.config.DatasourceConfig;
 import com.jdbcmcp.connection.DriverClassLoader;
 import com.jdbcmcp.connection.DriverManager;
@@ -19,6 +21,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
+import java.util.List;
 
 /**
  * JDBC-MCP Server 入口类。
@@ -32,35 +35,41 @@ public class JdbcMcpServer {
     public static void main(String[] args) {
         // 设置日志目录为 JAR 同级目录，供 logback.xml 中的 ${app.home} 使用
         System.setProperty("app.home", getJarDir());
+        ArgParser argParser = buildArgParser();
 
-        // 校验命令行参数：必须传入数据源名称
+        if (isHelp(args)) {
+            log.error(argParser.usage());
+            System.exit(0);
+        }
+
+        // 校验命令行参数：必须传入完整 JDBC 连接参数
         if (args == null || args.length == 0) {
-            log.error("Missing required argument: datasource name.");
-            log.error("Usage: java -jar jdbc-mcp.jar <datasource_name>");
+            log.error("Missing required datasource arguments.");
+            log.error(argParser.usage());
             System.exit(1);
         }
 
-        String datasourceName = args[0];
-
-        // 加载配置
-        ConfigManager configManager;
+        // 从命令行参数解析数据源配置，不再读取 config.yml
+        DatasourceConfig dsConfig;
         try {
-            configManager = ConfigManager.load();
-        } catch (Exception e) {
-            log.error("Failed to load config: {}", e.getMessage(), e);
+            ArgParseResult parsedArgs = argParser.parse(args);
+            dsConfig = DatasourceConfig.builder()
+                    .driverClass(parsedArgs.get("--driver-class"))
+                    .url(parsedArgs.get("--url"))
+                    .username(parsedArgs.get("--username"))
+                    .password(parsedArgs.get("--password"))
+                    .readOnly(!parsedArgs.contains("--danger-allow-write"))
+                    .maxRows(Integer.parseInt(parsedArgs.getOrDefault("--max-rows",
+                            String.valueOf(DatasourceConfig.DEFAULT_MAX_ROWS))))
+                    .build();
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid datasource arguments: {}", e.getMessage());
+            log.error(argParser.usage());
             System.exit(1);
             return;
         }
 
-        // 匹配数据源
-        DatasourceConfig dsConfig = configManager.getDatasource(datasourceName);
-        if (dsConfig == null) {
-            log.error("Datasource '{}' not found in config.yml.", datasourceName);
-            log.error("Available datasources: {}", configManager.getDatasourceNames());
-            System.exit(1);
-        }
-
-        log.info("Using datasource: {}", datasourceName);
+        log.info("Using JDBC driver: {}", dsConfig.getDriverClass());
 
         // 初始化驱动类加载器：扫描 driver/ 目录下的所有 JDBC 驱动 JAR
         DriverClassLoader driverClassLoader = new DriverClassLoader(getJarDir());
@@ -147,6 +156,85 @@ public class JdbcMcpServer {
             return file.getPath();
         } catch (Exception e) {
             return System.getProperty("user.dir");
+        }
+    }
+
+    private static boolean isHelp(String[] args) {
+        return args != null && args.length == 1 && ("--help".equals(args[0]) || "-h".equals(args[0]));
+    }
+
+    private static ArgParser buildArgParser() {
+        return ArgParser.builder()
+                .usageHeader("""
+                        Usage:
+                          java -jar jdbc-mcp.jar \\
+                            --driver-class <jdbc_driver_class> \\
+                            --url <jdbc_url> \\
+                            --username <username> \\
+                            --password <password> \\
+                            [--danger-allow-write] \\
+                            [--max-rows <positive_integer>]
+                        """)
+                .register(ArgOption.builder()
+                        .command("--driver-class")
+                        .shortCommand("-d")
+                        .description("JDBC driver full qualified class name.")
+                        .skipParameterCount(1)
+                        .required(true)
+                        .validator(JdbcMcpServer::validateNotBlank)
+                        .build())
+                .register(ArgOption.builder()
+                        .command("--url")
+                        .description("JDBC connection URL.")
+                        .skipParameterCount(1)
+                        .required(true)
+                        .validator(JdbcMcpServer::validateNotBlank)
+                        .build())
+                .register(ArgOption.builder()
+                        .command("--username")
+                        .shortCommand("-u")
+                        .description("Database username.")
+                        .skipParameterCount(1)
+                        .required(true)
+                        .build())
+                .register(ArgOption.builder()
+                        .command("--password")
+                        .shortCommand("-p")
+                        .description("Database password.")
+                        .skipParameterCount(1)
+                        .required(true)
+                        .build())
+                .register(ArgOption.builder()
+                        .command("--danger-allow-write")
+                        .description("Dangerously allow execute_update statements. Default: false.")
+                        .skipParameterCount(0)
+                        .build())
+                .register(ArgOption.builder()
+                        .command("--max-rows")
+                        .shortCommand("-m")
+                        .description("Maximum rows returned by execute_query. Default: 100.")
+                        .skipParameterCount(1)
+                        .validator(JdbcMcpServer::validatePositiveInteger)
+                        .build())
+                .build();
+    }
+
+    private static void validateNotBlank(ArgOption option, List<String> values) {
+        String value = values.isEmpty() ? null : values.get(0);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(option.getCommand() + " cannot be blank.");
+        }
+    }
+
+    private static void validatePositiveInteger(ArgOption option, List<String> values) {
+        String value = values.isEmpty() ? null : values.get(0);
+        try {
+            int parsedValue = Integer.parseInt(value);
+            if (parsedValue <= 0) {
+                throw new IllegalArgumentException(option.getCommand() + " must be a positive integer.");
+            }
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid integer value for " + option.getCommand() + ": " + value, e);
         }
     }
 }
