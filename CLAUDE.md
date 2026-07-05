@@ -51,7 +51,7 @@ src/main/java/com/jdbcmcp/
 | `list_catalogs` | ListCatalogTool | 无 | 列出所有 catalog |
 | `list_schemas` | ListSchemaTool | `catalog?` (optional) | 列出 schema，可按 catalog 过滤 |
 | `list_tables` | ListTableTool | `catalog?`, `schema?`, `table_pattern?` (默认 `%`) | 列出表和视图 |
-| `get_table_schema` | GetTableSchemaTool | `catalog?`, `schema?`, `table?` (默认 `%`) | 获取指定表的列元数据 |
+| `get_table_schema` | GetTableSchemaTool | `catalog?`, `schema?`, `table?` (默认 `%`) | 获取指定表的列元数据（含可空、主键、自增） |
 | `execute_query` | ExecuteQueryTool | `sql` (required) | 执行 SELECT 查询，返回 Markdown 格式 |
 | `execute_update` | ExecuteUpdateTool | `sql` (required) | 执行修改 SQL，返回受影响行数 |
 

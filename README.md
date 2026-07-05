@@ -121,7 +121,7 @@ cp mysql-connector-j-8.x.jar ~/jdbc-mcp-tool/driver/
 | `list_catalogs` | 列出所有 catalog |
 | `list_schemas` | 列出 schema，可按 catalog 过滤 |
 | `list_tables` | 列出表和视图，可按 catalog / schema / 表名过滤 |
-| `get_table_schema` | 获取指定表的列元数据（类型、长度等） |
+| `get_table_schema` | 获取指定表的列元数据（类型、长度、可空、主键、自增等） |
 
 ### 数据操作
 
