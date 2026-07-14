@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build distribution
+        run: mvn -B clean package
+
+      - name: Prepare release asset
+        id: asset
+        shell: bash
+        run: |
+          tag_name="${GITHUB_REF_NAME}"
+          safe_tag_name="${tag_name//\//-}"
+          asset_name="jdbc-mcp-${safe_tag_name}.zip"
+
+          cp target/jdbc-mcp.zip "${asset_name}"
+
+          echo "tag_name=${tag_name}" >> "${GITHUB_OUTPUT}"
+          echo "asset_name=${asset_name}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.asset.outputs.tag_name }}
+          ASSET_NAME: ${{ steps.asset.outputs.asset_name }}
+        shell: bash
+        run: |
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release upload "${TAG_NAME}" "${ASSET_NAME}" --clobber
+          else
+            gh release create "${TAG_NAME}" "${ASSET_NAME}" \
+              --title "${TAG_NAME}" \
+              --generate-notes
+          fi
