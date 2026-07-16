@@ -8,7 +8,7 @@
 
 JDBC-MCP 是一个基于 Model Context Protocol (MCP) 的通用 JDBC 数据库工具，通过 `stdio` 与大模型（Agent）通信，提供数据库探查与操作能力。
 
-**技术栈**: Java 17 / Maven / MCP SDK 0.17.2 / SLF4J 2.0.16 + Logback 1.5.16 / Lombok 1.18.38
+**技术栈**: Java 17 / Maven / MCP SDK 0.17.2 / Apache Fesod Sheet 2.0.2-incubating / SLF4J 2.0.16 + Logback 1.5.16 / Lombok 1.18.38
 
 ---
 
@@ -32,6 +32,12 @@ src/main/java/com/jdbcmcp/
 ├── interceptor/
 │   ├── QueryOnlyInterceptor.java       # 无条件只读拦截器（execute_query 使用）
 │   └── SqlInterceptor.java             # 条件性只读拦截器（execute_update 使用）
+├── exporter/
+│   ├── ExportTask.java                 # 单个异步导出任务运行时状态
+│   ├── ExportTaskManager.java          # 导出任务管理、后台执行与取消
+│   ├── ExportTaskSnapshot.java         # 导出任务只读快照
+│   ├── ExportTaskStatus.java           # 导出任务状态枚举
+│   └── XlsxStreamingWriter.java        # 基于 Apache Fesod Sheet 的 XLSX 分批写入器
 └── tool/
     ├── AbstractMetaTool.java            # 工具抽象基类
     ├── ListCatalogTool.java             # list_catalogs
@@ -39,7 +45,12 @@ src/main/java/com/jdbcmcp/
     ├── ListTableTool.java               # list_tables
     ├── GetTableSchemaTool.java          # get_table_schema
     ├── ExecuteQueryTool.java            # execute_query
-    └── ExecuteUpdateTool.java           # execute_update
+    ├── ExecuteUpdateTool.java           # execute_update
+    ├── StartExportTaskTool.java         # start_export_task
+    ├── GetExportTaskTool.java           # get_export_task
+    ├── ListExportTasksTool.java         # list_export_tasks
+    ├── CancelExportTaskTool.java        # cancel_export_task
+    └── ExportTaskFormat.java            # 导出任务 Markdown 格式化
 ```
 
 ---
@@ -54,6 +65,10 @@ src/main/java/com/jdbcmcp/
 | `get_table_schema` | GetTableSchemaTool | `catalog?`, `schema?`, `table?` (默认 `%`) | 获取指定表的列元数据（含可空、主键、自增） |
 | `execute_query` | ExecuteQueryTool | `sql` (required) | 执行 SELECT 查询，返回 Markdown 格式 |
 | `execute_update` | ExecuteUpdateTool | `sql` (required) | 执行修改 SQL，返回受影响行数 |
+| `start_export_task` | StartExportTaskTool | `sql`, `file_path` (required) | 启动异步 SELECT → XLSX 导出任务 |
+| `get_export_task` | GetExportTaskTool | `task_id` (required) | 查询导出任务状态、进度和错误信息 |
+| `list_export_tasks` | ListExportTasksTool | 无 | 列出当前进程内导出任务 |
+| `cancel_export_task` | CancelExportTaskTool | `task_id` (required) | 尽力取消导出任务 |
 
 ---
 
@@ -68,7 +83,8 @@ src/main/java/com/jdbcmcp/
 4. `new DriverClassLoader(appHome)` 初始化驱动类加载器（扫描 `driver/` 下所有 JAR）
 5. `new DriverManager(dsConfig, driverClassLoader)` 初始化连接管理器
 6. `new SqlInterceptor(dsConfig.isReadOnly())` 初始化拦截器
-7. 构建 MCP Sync Server（Stdio 传输）→ 依次注册 6 个工具
+7. 初始化 `ExportTaskManager`
+8. 构建 MCP Sync Server（Stdio 传输）→ 依次注册元数据、SQL 执行和异步导出工具
 
 ### 4.2 参数管理 (`ArgParser` + `DatasourceConfig`)
 
@@ -120,7 +136,18 @@ src/main/java/com/jdbcmcp/
 
 **元数据查询工具**（list_catalogs 等）使用无行数限制的 `ResultFormatter.format(rs)` 重载，同样输出 Markdown 格式。
 
-### 4.6 工具基类 (`AbstractMetaTool`)
+### 4.6 异步 XLSX 导出 (`ExportTaskManager` + `XlsxStreamingWriter`)
+
+- `start_export_task` 校验 `sql` 仅允许 SELECT，`file_path` 必须以 `.xlsx` 结尾
+- 每个任务在后台线程中创建新 JDBC 连接，使用 `TYPE_FORWARD_ONLY` / `CONCUR_READ_ONLY` 读取 `ResultSet`
+- `Statement#setFetchSize(1000)` 控制 JDBC 拉取批次；导出不受 `--max-rows` 限制
+- `XlsxStreamingWriter` 使用 Apache Fesod Sheet (`FesodSheet.write(...).excelType(XLSX)`) 按 1000 行批次写入
+- 表头来自 `ResultSetMetaData.getColumnLabel()`；空结果集也会生成仅含表头的工作表
+- 单个 Sheet 最多写入 1,048,575 条数据行（保留 1 行表头），超出后自动创建 `Data2`, `Data3`...
+- NULL 写为空单元格；数值、布尔、日期时间尽量保留 Excel 原生类型，二进制值写为 `<binary N bytes>`
+- `cancel_export_task` 会设置取消标记、尝试 `Statement.cancel()` 并取消后台 `Future`
+
+### 4.7 工具基类 (`AbstractMetaTool`)
 
 - `buildSpecification()` 构建 `SyncToolSpecification`，自动包装 callHandler（try-catch + `ResultFormatter.errorResult()`）
 - 子类实现 `doHandle()` 和可选的 `onError()`
@@ -161,6 +188,8 @@ jdbc-mcp-tool/
 │   ├── slf4j-api-*.jar
 │   ├── logback-classic-*.jar
 │   ├── logback-core-*.jar
+│   ├── fesod-*.jar
+│   ├── poi-*.jar
 │   └── jackson-*.jar
 └── logs/
     ├── jdbc-mcp.log
@@ -194,3 +223,4 @@ jdbc-mcp-tool/
 5. **安全拦截** — `execute_query` 天然只读（`QueryOnlyInterceptor` 无条件拦截）；`execute_update` 默认只读拦截，仅在显式传入 `--danger-allow-write` 时允许写操作（`SqlInterceptor` 条件拦截 + `conn.setReadOnly()` 双重保护）
 6. **行数截断** — `execute_query` 双重限制：`Statement.setMaxRows()` + 遍历计数器，默认 100 行
 7. **Markdown 格式化** — `execute_query` 输出分为 `# Schema`（列名、类型、长度）和 `# Data`（数据行）两个部分，NULL 渲染为 `<i>NULL</i>`；`execute_update` 仅返回受影响行数
+8. **Excel 导出** — XLSX 导出必须通过 Apache Fesod Sheet 实现，保持后台异步、分批写入和任务可取消

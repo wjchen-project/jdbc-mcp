@@ -25,7 +25,7 @@
 | 📦 驱动动态加载 | 数据库驱动独立放入 `driver/` 目录，项目本身不内置数据库驱动 |
 | 📊 Markdown 输出 | 查询结果自动格式化为 `# Schema` 与 `# Data`，便于 Agent 阅读 |
 | ⚙️ 命令行配置 | 无需配置文件，连接信息、行数限制、写入开关均通过启动参数指定 |
-| 📤 异步 XLSX 导出 | 后台执行 SELECT 导出任务，支持通过任务 ID 查询状态、已导出行数和取消任务 |
+| 📤 异步 XLSX 导出 | 基于 Apache Fesod Sheet 后台执行 SELECT 导出任务，支持通过任务 ID 查询状态、已导出行数和取消任务 |
 
 ## 📚 目录
 
@@ -80,6 +80,8 @@ jdbc-mcp-tool/
 │   ├── slf4j-api-*.jar
 │   ├── logback-classic-*.jar
 │   ├── logback-core-*.jar
+│   ├── fesod-*.jar
+│   ├── poi-*.jar
 │   └── jackson-*.jar
 └── logs/               # 日志目录，首次运行时自动创建
 ```
@@ -199,7 +201,7 @@ java -jar jdbc-mcp.jar \
 | `list_export_tasks` | 无 | 列出当前 MCP Server 进程内的导出任务 |
 | `cancel_export_task` | `task_id` | 尽力取消长时间运行的导出任务 |
 
-导出任务不会占用 MCP 单次调用等待时间：`start_export_task` 会立即返回任务 ID，后台线程持续流式读取 `ResultSet` 并写入 XLSX。进度以 `exportedRows`（已导出数据行数，不含表头）呈现。
+导出任务不会占用 MCP 单次调用等待时间：`start_export_task` 会立即返回任务 ID，后台线程持续流式读取 `ResultSet`，并通过 Apache Fesod Sheet 按批次写入 XLSX。进度以 `exportedRows`（已导出数据行数，不含表头）呈现；单个工作表达到 Excel 行数上限后会自动切换到下一张工作表。
 
 示例返回：
 
