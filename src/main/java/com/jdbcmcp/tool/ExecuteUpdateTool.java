@@ -61,6 +61,7 @@ public class ExecuteUpdateTool extends AbstractMetaTool {
 
         try (Connection conn = getConnectionManager().getConnection()) {
             try (Statement stmt = conn.createStatement()) {
+                //noinspection SqlSourceToSinkFlow
                 boolean hasResultSet = stmt.execute(sql);
 
                 if (hasResultSet) {

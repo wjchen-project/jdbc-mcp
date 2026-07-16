@@ -67,6 +67,7 @@ public class ExecuteQueryTool extends AbstractMetaTool {
             try (Statement stmt = conn.createStatement()) {
                 stmt.setMaxRows(maxRows);
 
+                //noinspection SqlSourceToSinkFlow
                 boolean hasResultSet = stmt.execute(sql);
 
                 if (hasResultSet) {

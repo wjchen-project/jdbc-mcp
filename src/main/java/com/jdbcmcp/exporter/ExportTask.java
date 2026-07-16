@@ -62,7 +62,7 @@ class ExportTask {
         return cancelRequested.get();
     }
 
-    boolean requestCancel() {
+    void requestCancel() {
         cancelRequested.set(true);
         Statement statement = activeStatement;
         if (statement != null) {
@@ -76,7 +76,6 @@ class ExportTask {
         if (currentFuture != null) {
             currentFuture.cancel(true);
         }
-        return status.get() == ExportTaskStatus.RUNNING;
     }
 
     void markSucceeded() {

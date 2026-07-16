@@ -240,6 +240,9 @@ public class JdbcMcpServer {
 
     private static void validatePositiveInteger(ArgOption option, List<String> values) {
         String value = values.isEmpty() ? null : values.get(0);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(option.getCommand() + " must be a positive integer.");
+        }
         try {
             int parsedValue = Integer.parseInt(value);
             if (parsedValue <= 0) {
