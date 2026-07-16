@@ -7,6 +7,11 @@ import com.jdbcmcp.config.DatasourceConfig;
 import com.jdbcmcp.connection.DriverClassLoader;
 import com.jdbcmcp.connection.DriverManager;
 import com.jdbcmcp.interceptor.SqlInterceptor;
+import com.jdbcmcp.exporter.ExportTaskManager;
+import com.jdbcmcp.tool.CancelExportTaskTool;
+import com.jdbcmcp.tool.GetExportTaskTool;
+import com.jdbcmcp.tool.ListExportTasksTool;
+import com.jdbcmcp.tool.StartExportTaskTool;
 import com.jdbcmcp.tool.ExecuteQueryTool;
 import com.jdbcmcp.tool.ExecuteUpdateTool;
 import com.jdbcmcp.tool.GetTableSchemaTool;
@@ -87,6 +92,8 @@ public class JdbcMcpServer {
         // 初始化 SQL 拦截器
         SqlInterceptor interceptor = new SqlInterceptor(dsConfig.isReadOnly());
 
+        ExportTaskManager exportTaskManager = new ExportTaskManager(connectionManager);
+
         // 构建 MCP Server
         try {
             StdioServerTransportProvider transportProvider =
@@ -122,6 +129,11 @@ public class JdbcMcpServer {
             // 注册 execute_update 工具
             var executeUpdateTool = ExecuteUpdateTool.create(connectionManager, interceptor);
             server.addTool(executeUpdateTool);
+
+            server.addTool(StartExportTaskTool.create(exportTaskManager));
+            server.addTool(GetExportTaskTool.create(exportTaskManager));
+            server.addTool(ListExportTasksTool.create(exportTaskManager));
+            server.addTool(CancelExportTaskTool.create(exportTaskManager));
 
             log.info("JDBC-MCP Server started successfully. Waiting for MCP requests...");
 

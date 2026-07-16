@@ -25,6 +25,7 @@
 | 📦 驱动动态加载 | 数据库驱动独立放入 `driver/` 目录，项目本身不内置数据库驱动 |
 | 📊 Markdown 输出 | 查询结果自动格式化为 `# Schema` 与 `# Data`，便于 Agent 阅读 |
 | ⚙️ 命令行配置 | 无需配置文件，连接信息、行数限制、写入开关均通过启动参数指定 |
+| 📤 异步 XLSX 导出 | 后台执行 SELECT 导出任务，支持通过任务 ID 查询状态、已导出行数和取消任务 |
 
 ## 📚 目录
 
@@ -171,7 +172,7 @@ java -jar jdbc-mcp.jar \
 
 ## 🧰 MCP 工具说明
 
-本工具向 Agent 注册 6 个 MCP 工具。
+本工具向 Agent 注册 10 个 MCP 工具。
 
 ### 元数据探查
 
@@ -188,6 +189,28 @@ java -jar jdbc-mcp.jar \
 |------|------|------|
 | `execute_query` | `sql` | 执行只读查询 SQL，仅允许 `SELECT`，返回 Markdown 格式结果，受 `--max-rows` 限制 |
 | `execute_update` | `sql` | 执行 `INSERT` / `UPDATE` / `DELETE` / DDL 等修改语句；默认被只读模式拦截，需显式开启写权限 |
+
+### 异步 XLSX 导出
+
+| 工具 | 参数 | 说明 |
+|------|------|------|
+| `start_export_task` | `sql`, `file_path` | 启动后台 XLSX 导出任务；`sql` 仅允许 `SELECT`，`file_path` 必须以 `.xlsx` 结尾 |
+| `get_export_task` | `task_id` | 查询导出任务状态、已导出行数、输出路径、时间戳与错误信息 |
+| `list_export_tasks` | 无 | 列出当前 MCP Server 进程内的导出任务 |
+| `cancel_export_task` | `task_id` | 尽力取消长时间运行的导出任务 |
+
+导出任务不会占用 MCP 单次调用等待时间：`start_export_task` 会立即返回任务 ID，后台线程持续流式读取 `ResultSet` 并写入 XLSX。进度以 `exportedRows`（已导出数据行数，不含表头）呈现。
+
+示例返回：
+
+```markdown
+# Export Task
+
+- **Task ID:** 5c2d...
+- **Status:** RUNNING
+- **Exported Rows:** 12000
+- **File Path:** /tmp/users.xlsx
+```
 
 ### 查询输出示例
 
@@ -226,6 +249,7 @@ JDBC-MCP 默认面向数据库探查与只读查询场景，安全策略如下�
 2. **写操作显式授权**：`execute_update` 默认拦截修改语句，仅在启动时添加 `--danger-allow-write` 后允许执行。
 3. **数据库连接只读保护**：只读模式下会调用 `Connection#setReadOnly(true)`，由数据库驱动与服务端共同约束。
 4. **行数限制**：`execute_query` 同时通过 `Statement#setMaxRows()` 与格式化遍历计数限制返回行数。
+   异步导出不受 `--max-rows` 限制，采用 JDBC fetch size 与 XLSX 流式写入，适合大结果集长时间任务。
 5. **stdout 隔离**：标准输出仅用于 MCP JSON-RPC 通信；日志输出到 stderr 与日志文件，避免污染协议流。
 
 如需开启写操作，请明确承担风险并使用权限受限的数据库账号：
@@ -248,6 +272,7 @@ src/main/java/com/jdbcmcp/
 ├── connection/                         # JDBC 驱动加载与连接管理
 ├── formatter/                          # ResultSet -> Markdown 格式化
 ├── interceptor/                        # SQL 只读/写入拦截器
+├── exporter/                          # 异步 XLSX 导出任务与流式写入
 └── tool/                               # MCP 工具实现
 ```
 

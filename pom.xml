@@ -75,7 +75,7 @@
     </dependencies>
 
     <build>
-        <finalName>${artifactId}</finalName>
+        <finalName>${project.artifactId}</finalName>
         <plugins>
             <!-- maven-jar-plugin: 构建仅含项目自身 class 的精简 JAR -->
             <plugin>
