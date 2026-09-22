@@ -8,6 +8,7 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import lombok.extern.slf4j.Slf4j;
 
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.util.Map;
@@ -51,10 +52,12 @@ public class ListTableTool extends AbstractMetaTool {
         String tablePattern = getOptionalString(arguments, "table_pattern");
         if (tablePattern == null) tablePattern = "%";
 
-        DatabaseMetaData dbMeta = getConnectionManager().getConnection().getMetaData();
+        try (Connection conn = getConnectionManager().getConnection()) {
+            DatabaseMetaData dbMeta = conn.getMetaData();
 
-        try (ResultSet tables = dbMeta.getTables(catalog, schemaPattern, tablePattern, new String[]{"TABLE", "VIEW", "SYSTEM TABLE"})) {
-            return ResultFormatter.successResult(ResultFormatter.format(tables));
+            try (ResultSet tables = dbMeta.getTables(catalog, schemaPattern, tablePattern, new String[]{"TABLE", "VIEW", "SYSTEM TABLE"})) {
+                return ResultFormatter.successResult(ResultFormatter.format(tables));
+            }
         }
     }
 

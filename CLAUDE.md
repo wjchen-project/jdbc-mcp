@@ -108,10 +108,12 @@ src/main/java/com/jdbcmcp/
   - `lib/` 目录存放项目运行时依赖（由 MANIFEST.MF Class-Path 管理，构建时固定）
   - `driver/` 目录专门存放用户自行放入的 JDBC 驱动，由 DriverClassLoader 动态扫描
   - `loadClass(className)` 委托父加载器优先，未找到时搜索 `driver/` 下的 JAR
-- **DriverManager**: 通过 `driverClassLoader.loadClass(driverClass)` 加载驱动类 → 反射实例化 → `driver.connect()` 获取连接
-- 通过 `driver.connect(url, info)` 直接建立 Connection（绕过 `java.sql.DriverManager`）
-- `readOnly=true` 时自动调用 `conn.setReadOnly(true)`
-- 每次调用返回新连接，无连接池
+- **DriverManager**: 通过 `driverClassLoader.loadClass(driverClass)` 加载驱动类 → 反射实例化 → 构建 HikariCP 连接池
+- 连接池：HikariCP（`maxPoolSize=5`，`connectionTimeout=10s`），经 `DriverDataSourceAdapter` 将 `Driver` 实例适配为 `DataSource` 交给 HikariCP
+- 建连路径仍为 `driver.connect(url, info)`（绕过 `java.sql.DriverManager`，兼容子加载器中的驱动类）
+- `readOnly=true` 时通过 HikariCP `isReadOnly` 配置在连接入池时自动调用 `conn.setReadOnly(true)`
+- `getConnection()` 从池中获取连接，调用方 `close()` 时由 HikariCP 拦截归还而非物理关闭
+- `DriverManager` 实现 `AutoCloseable`，JVM shutdown hook 中统一释放连接池与导出线程池
 
 ### 4.4 安全拦截
 
@@ -218,7 +220,7 @@ jdbc-mcp-tool/
 
 1. **依赖隔离** — pom.xml 严禁引入数据库驱动依赖，驱动由用户自行放入 `driver/` 目录
 2. **stdout 隔离 (CRITICAL)** — `System.out` 仅用于 MCP JSON-RPC 通信，严禁输出任何调试/日志/异常信息，全部走 `System.err` 或日志文件
-3. **驱动加载** — 严禁使用 `java.sql.DriverManager.getConnection()`，必须通过 `DriverClassLoader.loadClass()` 加载驱动类 → 反射实例化 → `driver.connect()` 获取连接
+3. **驱动加载** — 严禁使用 `java.sql.DriverManager.getConnection()`，必须通过 `DriverClassLoader.loadClass()` 加载驱动类 → 反射实例化 → `DriverDataSourceAdapter` 适配为 `DataSource` 交给 HikariCP（建连路径仍为 `driver.connect()`）
 4. **命令行参数** — `main()` 必须校验并解析 JDBC 参数，缺失或不匹配时 `System.exit(1)`
 5. **安全拦截** — `execute_query` 天然只读（`QueryOnlyInterceptor` 无条件拦截）；`execute_update` 默认只读拦截，仅在显式传入 `--danger-allow-write` 时允许写操作（`SqlInterceptor` 条件拦截 + `conn.setReadOnly()` 双重保护）
 6. **行数截断** — `execute_query` 双重限制：`Statement.setMaxRows()` + 遍历计数器，默认 100 行

@@ -23,6 +23,7 @@
 | 🧩 MCP 标准接入 | 基于 Model Context Protocol，通过 `stdio` 与 Claude Code 等客户端通信 |
 | 🛡️ 默认只读安全 | `execute_query` 仅允许 `SELECT`；写操作默认拦截，需显式开启 |
 | 📦 驱动动态加载 | 数据库驱动独立放入 `driver/` 目录，项目本身不内置数据库驱动 |
+| ♻️ 连接池复用 | 基于 HikariCP 连接池管理数据库连接，避免 Agent 高频调用时反复建连或泄漏连接 |
 | 📊 Markdown 输出 | 查询结果自动格式化为 `# Schema` 与 `# Data`，便于 Agent 阅读 |
 | ⚙️ 命令行配置 | 无需配置文件，连接信息、行数限制、写入开关均通过启动参数指定 |
 | 📤 异步 XLSX 导出 | 基于 Apache Fesod Sheet 后台执行 SELECT 导出任务，支持通过任务 ID 查询状态、已导出行数和取消任务 |
@@ -249,7 +250,7 @@ JDBC-MCP 默认面向数据库探查与只读查询场景，安全策略如下�
 
 1. **查询工具天然只读**：`execute_query` 始终拒绝非 `SELECT` 语句。
 2. **写操作显式授权**：`execute_update` 默认拦截修改语句，仅在启动时添加 `--danger-allow-write` 后允许执行。
-3. **数据库连接只读保护**：只读模式下会调用 `Connection#setReadOnly(true)`，由数据库驱动与服务端共同约束。
+3. **数据库连接只读保护**：只读模式下通过 HikariCP `isReadOnly` 配置在连接入池时调用 `Connection#setReadOnly(true)`，由数据库驱动与服务端共同约束。
 4. **行数限制**：`execute_query` 同时通过 `Statement#setMaxRows()` 与格式化遍历计数限制返回行数。
    异步导出不受 `--max-rows` 限制，采用 JDBC fetch size 与 XLSX 流式写入，适合大结果集长时间任务。
 5. **stdout 隔离**：标准输出仅用于 MCP JSON-RPC 通信；日志输出到 stderr 与日志文件，避免污染协议流。

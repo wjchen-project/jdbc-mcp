@@ -94,6 +94,20 @@ public class JdbcMcpServer {
 
         ExportTaskManager exportTaskManager = new ExportTaskManager(connectionManager);
 
+        // JVM 退出时释放连接池与导出线程池
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                exportTaskManager.close();
+            } catch (Exception e) {
+                log.warn("Failed to close export task manager: {}", e.getMessage());
+            }
+            try {
+                connectionManager.close();
+            } catch (Exception e) {
+                log.warn("Failed to close connection manager: {}", e.getMessage());
+            }
+        }, "jdbc-mcp-shutdown"));
+
         // 构建 MCP Server
         try {
             StdioServerTransportProvider transportProvider =

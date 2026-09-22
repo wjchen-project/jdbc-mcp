@@ -8,6 +8,7 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import lombok.extern.slf4j.Slf4j;
 
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.util.Map;
@@ -45,10 +46,12 @@ public class ListSchemaTool extends AbstractMetaTool {
         Map<String, Object> arguments = request.arguments();
         String catalog = getOptionalString(arguments, "catalog");
 
-        DatabaseMetaData dbMeta = getConnectionManager().getConnection().getMetaData();
+        try (Connection conn = getConnectionManager().getConnection()) {
+            DatabaseMetaData dbMeta = conn.getMetaData();
 
-        try (ResultSet schemas = dbMeta.getSchemas(catalog, null)) {
-            return ResultFormatter.successResult(ResultFormatter.format(schemas));
+            try (ResultSet schemas = dbMeta.getSchemas(catalog, null)) {
+                return ResultFormatter.successResult(ResultFormatter.format(schemas));
+            }
         }
     }
 
