@@ -35,7 +35,7 @@ import java.util.List;
 @Slf4j
 public class JdbcMcpServer {
 
-    private static final String VERSION = "1.0.0";
+    private static final String VERSION = "1.1.0";
 
     public static void main(String[] args) {
         // 设置日志目录为 JAR 同级目录，供 logback.xml 中的 ${app.home} 使用
