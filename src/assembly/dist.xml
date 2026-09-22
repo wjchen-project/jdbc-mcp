@@ -38,6 +38,16 @@
             <directoryMode>0755</directoryMode>
         </fileSet>
 
+        <!-- Windows 启动脚本 -->
+        <fileSet>
+            <directory>${project.basedir}/src/main/assembly</directory>
+            <outputDirectory>/</outputDirectory>
+            <includes>
+                <include>jdbc-mcp.ps1</include>
+            </includes>
+            <fileMode>0644</fileMode>
+        </fileSet>
+
         <!-- 开源许可证说明 -->
         <fileSet>
             <directory>${project.basedir}</directory>

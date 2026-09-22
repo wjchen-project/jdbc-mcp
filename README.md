@@ -73,6 +73,7 @@ unzip target/jdbc-mcp.zip -d ~/
 ```text
 jdbc-mcp-tool/
 ├── jdbc-mcp.jar        # 精简 JAR，仅包含项目自身业务逻辑
+├── jdbc-mcp.ps1        # Windows 启动脚本（头部集中配置，可直接配置为 MCP 命令）
 ├── LICENSE             # MIT 开源许可证
 ├── driver/             # 用户自行放入数据库 JDBC 驱动
 │   └── <your-jdbc-driver>.jar
@@ -148,6 +149,24 @@ java -jar jdbc-mcp.jar \
 ```
 
 > 将 `/path/to/jdbc-mcp-tool/` 替换为实际安装路径，并按实际数据库连接信息填写参数。
+
+### Windows：使用启动脚本
+
+Windows 下推荐编辑分发包内的 `jdbc-mcp.ps1`：所有连接参数集中在脚本头部"用户配置区"，改好后无需再拼冗长的命令行。
+
+```json
+{
+  "mcpServers": {
+    "jdbc-mcp": {
+      "type": "stdio",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "C:\\path\\to\\jdbc-mcp-tool\\jdbc-mcp.ps1"]
+    }
+  }
+}
+```
+
+> 脚本会自动定位自身所在目录（即 `jdbc-mcp.jar` 与 `driver/` 所在目录），并按 `$JavaPath` → `PATH` → `JAVA_HOME` 的顺序查找 Java。提示信息仅输出到 stderr，不污染 stdout 协议流。
 
 ### 开发模式
 
